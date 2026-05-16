@@ -1,0 +1,7 @@
+names:
+- digital_screen
+nc: 1
+path: /home/change/Yolo_digital_meter/dataset_obb
+test: test/images
+train: train/images
+val: valid/images

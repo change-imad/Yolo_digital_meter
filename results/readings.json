@@ -1,0 +1,42 @@
+[
+  {
+    "timestamp": "2026-05-16T13:51:35.868889",
+    "reading": "00789",
+    "confidence": 0.891,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T13:51:36.032091",
+    "reading": "005011",
+    "confidence": 0.6832,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T13:51:36.082525",
+    "reading": "005113",
+    "confidence": 0.8542,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T13:51:36.159977",
+    "reading": "000471",
+    "confidence": 0.3096,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  }
+]

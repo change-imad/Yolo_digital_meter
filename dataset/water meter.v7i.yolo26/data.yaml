@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 11
+names: ['0', '1', '10', '2', '3', '4', '5', '6', '7', '8', '9']
+
+roboflow:
+  workspace: pavel-glebov
+  project: water-meter-yaxgc
+  version: 7
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/pavel-glebov/water-meter-yaxgc/dataset/7

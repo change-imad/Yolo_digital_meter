@@ -1,0 +1,562 @@
+[
+  {
+    "timestamp": "2026-05-16T11:57:39.618963",
+    "reading": "401012183",
+    "confidence": 0.7453,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.646168",
+    "reading": "66384",
+    "confidence": 0.6455,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.672441",
+    "reading": "36F0.0E0",
+    "confidence": 0.5259,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.698682",
+    "reading": "003Ma",
+    "confidence": 0.3114,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.724711",
+    "reading": "N0:103231 0r",
+    "confidence": 0.4818,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.751127",
+    "reading": "nanco.",
+    "confidence": 0.5137,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.777071",
+    "reading": "00205",
+    "confidence": 0.6956,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.803135",
+    "reading": "OF0*250759",
+    "confidence": 0.4782,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.829351",
+    "reading": "OF0*250759",
+    "confidence": 0.0,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.862113",
+    "reading": "10202",
+    "confidence": 0.5323,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.888192",
+    "reading": "nEae",
+    "confidence": 0.2172,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.914312",
+    "reading": "cotaa",
+    "confidence": 0.7815,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.940846",
+    "reading": "0050.5",
+    "confidence": 0.8631,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.967416",
+    "reading": "00039",
+    "confidence": 0.7461,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:39.993792",
+    "reading": "FooJaol",
+    "confidence": 0.4259,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.019996",
+    "reading": "7613321",
+    "confidence": 0.4895,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.046239",
+    "reading": "FTEZEZ:0-0",
+    "confidence": 0.5649,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.072328",
+    "reading": "0000g",
+    "confidence": 0.4376,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.099007",
+    "reading": "000.31",
+    "confidence": 0.6855,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.125727",
+    "reading": "Dd09u",
+    "confidence": 0.2458,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.152477",
+    "reading": "AO045",
+    "confidence": 0.2248,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.179142",
+    "reading": "oerh16l",
+    "confidence": 0.326,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.206234",
+    "reading": "LU005N",
+    "confidence": 0.3368,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.239521",
+    "reading": "00o",
+    "confidence": 0.4787,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.266241",
+    "reading": "T063010",
+    "confidence": 0.4548,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.292823",
+    "reading": "10:0:0:0:0",
+    "confidence": 0.7696,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.319936",
+    "reading": "mEDm",
+    "confidence": 0.3723,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.347633",
+    "reading": "9OLOE",
+    "confidence": 0.3171,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.374376",
+    "reading": "1070412177",
+    "confidence": 0.7315,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.402641",
+    "reading": "l60g0u",
+    "confidence": 0.3462,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.429683",
+    "reading": "00000",
+    "confidence": 0.5369,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.456712",
+    "reading": "1062312169",
+    "confidence": 0.6585,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.483436",
+    "reading": "0:0:00:01",
+    "confidence": 0.5509,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.510224",
+    "reading": "1o0Htor2",
+    "confidence": 0.3478,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.537330",
+    "reading": "66670",
+    "confidence": 0.7015,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.564375",
+    "reading": "gEnGg",
+    "confidence": 0.2784,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.591315",
+    "reading": "00D.08",
+    "confidence": 0.5784,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.618148",
+    "reading": "gam68",
+    "confidence": 0.3535,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.645099",
+    "reading": "0-0.014.7.",
+    "confidence": 0.6224,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.672098",
+    "reading": "Y20-40-10-张154",
+    "confidence": 0.6217,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.699364",
+    "reading": "Loo2no",
+    "confidence": 0.3192,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.726800",
+    "reading": "gOLSs",
+    "confidence": 0.3634,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.753875",
+    "reading": "Ta032a",
+    "confidence": 0.3337,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.780481",
+    "reading": "ouabB",
+    "confidence": 0.3887,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.807434",
+    "reading": "FOEA",
+    "confidence": 0.3572,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.834497",
+    "reading": "10:49649.",
+    "confidence": 0.7123,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.861446",
+    "reading": "00900",
+    "confidence": 0.5572,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.888298",
+    "reading": "124032",
+    "confidence": 0.5564,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.915189",
+    "reading": "K6E1:0:0-0",
+    "confidence": 0.5648,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.942217",
+    "reading": "TAC1G0L",
+    "confidence": 0.4648,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.969141",
+    "reading": "0305058575",
+    "confidence": 0.743,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:40.996313",
+    "reading": "1a00ao",
+    "confidence": 0.4409,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:41.023591",
+    "reading": "10.0.0.0.0.",
+    "confidence": 0.7431,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:41.050819",
+    "reading": "ARERO",
+    "confidence": 0.5327,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:41.084317",
+    "reading": "1ouh0a5",
+    "confidence": 0.3625,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:57:41.111374",
+    "reading": "0-0:042353",
+    "confidence": 0.7924,
+    "uav_position": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "altitude": 0.0
+    }
+  }
+]

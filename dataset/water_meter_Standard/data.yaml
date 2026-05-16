@@ -1,0 +1,11 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names:
+  0: digital_screen
+
+# 由 filter_and_convert_to_obb.py 自动生成
+# 原始数据集: /home/change/Yolo_digital_meter/water meter.v7i.yolo26
+# 原始 class_id=2 ('10') -> 新 class_id=0 ('meter_display')
