@@ -44,17 +44,19 @@ Yolo_digital_meter/
 conda create -n d2l python=3.9 -y
 conda activate d2l
 
-# PyTorch（根据 CUDA 版本调整）
+# 安装 PyTorch，根据显卡配置
 pip install torch==1.12.0+cu102 torchvision==0.13.0 -f https://download.pytorch.org/whl/torch_stable.html
 
-# PaddlePaddle + PaddleOCR
-pip install paddlepaddle-gpu==2.6.2
-pip install paddleocr opencv-python-headless==4.10.0.84 "numpy<2"
+#安装 TensorRT 及其必备依赖     可选，用于边缘设备推理加速
+pip install tensorrt==8.2.5.1  
+pip install onnx==1.12.0       
 
-# Ultralytics（本地安装，已含 yolo26n-obb.pt 预训练权重）
+# 安装 Ultralytics
+pip install onnxsim
 cd ultralytics && pip install -e . && cd ..
 
-pip install tqdm pyyaml
+#其他常规依赖
+pip install tqdm pyyaml opencv-python
 ```
 
 ---
