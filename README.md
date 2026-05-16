@@ -4,38 +4,9 @@
 ---
 
 ## 系统架构
-
 ```
-视频流 / 图片
-  │
-  ▼
-┌─────────────────────┐
-│  前端过滤（抗模糊）   │  拉普拉斯方差判定，丢弃运动模糊帧
-└────────┬────────────┘
-         ▼
-┌─────────────────────┐
-│  阶段一：OBB 屏幕定位 │  YOLO26-OBB 检测数显区域，输出旋转框
-└────────┬────────────┘
-         ▼
-┌─────────────────────┐
-│  裁剪数显长条区域     │  按外接矩形裁剪，保持像素质量
-└────────┬────────────┘
-         ▼
-┌─────────────────────┐
-│  阶段二：单字检测     │  YOLO26n 检测 0-9 共 10 类数字
-└────────┬────────────┘
-         ▼
-┌─────────────────────┐
-│  按位置排序拼接       │  检测框按 x 坐标从左到右排列，拼接为读数
-└────────┬────────────┘
-         ▼
-┌─────────────────────┐
-│  时序投票（抗误读）   │  N 帧滑动窗口逐位加权投票，稳定后输出
-└────────┬────────────┘
-         ▼
-      最终读数字符串（可选写入 JSON/CSV）
+视频流->前端过滤->阶段一OBB定位->裁剪仪表区域->阶段二单字识别->时序投票筛选->输出
 ```
-
 ---
 
 ## 目录结构
@@ -150,6 +121,7 @@ python train_digit.py --data dataset_digits/data.yaml
 
 ### 4. 导出模型
 
+支持直接导出engine模型，tensorrt加速推理
 ```bash
 python export_engine.py --weights runs/obb/train/weights/best.pt --imgsz 640
 python export_engine.py --weights runs/digit/train/weights/best.pt --imgsz 416
@@ -219,7 +191,7 @@ reading = pipeline.process_frame(frame, uav_lat=0, uav_lon=0, uav_alt=0)
 
 ### `ScreenDetector`
 
-阶段一 OBB 检测器。
+阶段一 OBB 检测器
 
 ```python
 detector = ScreenDetector(weights="best.pt", device="0", imgsz=640, conf=0.5)
@@ -229,7 +201,7 @@ corners, crop = detector.detect(frame)
 
 ### `DigitDetector`
 
-阶段二单字检测器。
+阶段二 单字 检测器
 
 ```python
 detector = DigitDetector(weights="best.pt", device="0", imgsz=416, conf=0.3)
@@ -272,13 +244,13 @@ voter.is_stable()           # 是否稳定
 
 5. **data.yaml**：包含正确的 `names` 列表，大框类别名建议为 `'10'` 或类似标识
 
-### OBB 屏幕定位数据集（自动生成）
+### OBB 屏幕定位数据集
 
 由 `prepare_obb_dataset.py` 自动生成，包含：
 - `nc: 1`，`names: ['digital_screen']`
 - 图片为原图 symlink，标签仅保留大框行并转为 OBB 四角点格式
 
-### 单字检测数据集（自动生成）
+### 单字检测数据集
 
 由 `prepare_digit_dataset.py` 自动生成，包含：
 - `nc: 10`，`names: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']`
@@ -286,7 +258,7 @@ voter.is_stable()           # 是否稳定
 
 ---
 
-## 调优建议
+## 可调参数
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
