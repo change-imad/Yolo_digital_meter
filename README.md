@@ -45,7 +45,15 @@ conda create -n d2l python=3.9 -y
 conda activate d2l
 
 # 安装 PyTorch，根据显卡配置
-pip install torch==1.12.0+cu102 torchvision==0.13.0 -f https://download.pytorch.org/whl/torch_stable.html
+pip install torch==1.13
+
+
+#tochvision需要下载源码，手动编译
+git clone http://github.com/pytorch/vision.git
+git checkout v0.14.1
+cd vision
+#脚本编译
+python setup.py install
 
 #安装 TensorRT 及其必备依赖     可选，用于边缘设备推理加速
 pip install tensorrt==8.2.5.1  
@@ -119,7 +127,7 @@ python train_obb.py --data dataset_obb/data.yaml
 python train_digit.py --data dataset_digits/data.yaml
 ```
 
-训练产物分别保存在 `runs/obb/` 和 `runs/digit/`。
+训练产物分别保存在 `runs/obb/` 和 `runs/digit/`
 
 ### 4. 导出模型
 
