@@ -1,0 +1,16 @@
+# 忽略根目录下的 dataset 文件夹
+/dataset/
+/dataset_digits
+/dataset_obb
+
+# 忽略 python 运行生成的缓存
+__pycache__/
+*.pyc
+
+# 忽略 ultralytics 框架源码或大库（如果你是通过 pip 安装的，本地不需要提交它）
+ultralytics/
+
+# 忽略 Claude 的本地配置历史
+.claude/
+
+/debug/output_2

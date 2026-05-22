@@ -47,6 +47,8 @@ conda activate d2l
 # 安装 PyTorch，根据显卡配置
 pip install torch==1.13
 
+pip install ultralytics
+
 
 #tochvision需要下载源码，手动编译
 git clone http://github.com/pytorch/vision.git
@@ -100,6 +102,7 @@ names: ['0', '1', '10', '2', '3', '4', '5', '6', '7', '8', '9']
 ### 2. 生成训练数据集
 
 ```bash
+#默认为增量添加，可选择--clean参数覆盖原有数据集
 # 生成 OBB 屏幕定位数据集（提取大框，转为 OBB 四角点格式）
 python prepare_obb_dataset.py --src dataset/<your_dataset> --dst dataset_obb
 
@@ -120,6 +123,7 @@ python prepare_digit_dataset.py --src dataset/<your_dataset> --dst dataset_digit
 ### 3. 训练双模型
 
 ```bash
+#可添加--exist_ok覆盖训练结果，默认为增量更新
 # 阶段一：OBB 屏幕定位
 python train_obb.py --data dataset_obb/data.yaml
 
