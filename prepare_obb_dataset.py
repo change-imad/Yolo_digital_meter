@@ -37,17 +37,34 @@ def xywh_to_corners(xc, yc, w, h):
     return [x1, y1, x2, y1, x2, y2, x1, y2]
 
 
-def process_split(src_images, src_labels, dst_images, dst_labels, big_class_id):
+def process_split(src_images, src_labels, dst_images, dst_labels, big_class_id, clean=False):
+    """处理单个 split（train/valid/test）。
+
+    Args:
+        clean: 如果为 True，先清空目标目录再处理；否则增量追加（跳过已存在的文件）。
+    """
+    if clean:
+        import shutil
+        for d in [dst_images, dst_labels]:
+            if os.path.isdir(d):
+                shutil.rmtree(d)
     os.makedirs(dst_images, exist_ok=True)
     os.makedirs(dst_labels, exist_ok=True)
 
     image_files = sorted(glob.glob(os.path.join(src_images, "*.*")))
     ok = 0
     skip = 0
+    skip_exists = 0
 
     for img_path in tqdm(image_files, desc=os.path.basename(os.path.dirname(src_images))):
         basename = os.path.splitext(os.path.basename(img_path))[0]
         label_path = os.path.join(src_labels, basename + ".txt")
+
+        # 增量模式：跳过已存在的文件
+        dst_lbl_path = os.path.join(dst_labels, basename + ".txt")
+        if not clean and os.path.exists(dst_lbl_path):
+            skip_exists += 1
+            continue
 
         # 找大框行
         big_lines = []
@@ -73,12 +90,12 @@ def process_split(src_images, src_labels, dst_images, dst_labels, big_class_id):
             os.symlink(os.path.abspath(img_path), dst_img)
 
         # 写 OBB 标签
-        with open(os.path.join(dst_labels, basename + ".txt"), "w") as f:
+        with open(dst_lbl_path, "w") as f:
             f.write("\n".join(big_lines) + "\n")
 
         ok += 1
 
-    return ok, skip
+    return ok, skip, skip_exists
 
 
 def generate_data_yaml(output_dir):
@@ -104,10 +121,12 @@ def main():
                         help="输出数据集根目录")
     parser.add_argument("--big_class_id", type=int, default=2,
                         help="原始数据集中大框的 class_id")
+    parser.add_argument("--clean", action="store_true",
+                        help="清空目标目录后重新生成（默认增量追加，跳过已存在的文件）")
     args = parser.parse_args()
 
     splits = {"train": "train", "valid": "valid", "test": "test"}
-    total_ok, total_skip = 0, 0
+    total_ok, total_skip, total_exists = 0, 0, 0
 
     for split_name, folder in splits.items():
         src_img = os.path.join(args.src, folder, "images")
@@ -120,13 +139,14 @@ def main():
             continue
 
         log.info(f"处理 {split_name}...")
-        ok, skip = process_split(src_img, src_lbl, dst_img, dst_lbl, args.big_class_id)
+        ok, skip, exists = process_split(src_img, src_lbl, dst_img, dst_lbl, args.big_class_id, clean=args.clean)
         total_ok += ok
         total_skip += skip
-        log.info(f"  {split_name}: 成功={ok}, 无大框跳过={skip}")
+        total_exists += exists
+        log.info(f"  {split_name}: 成功={ok}, 无大框跳过={skip}, 已存在跳过={exists}")
 
     generate_data_yaml(args.dst)
-    log.info(f"全部完成: 成功={total_ok}, 跳过={total_skip}")
+    log.info(f"全部完成: 成功={total_ok}, 跳过={total_skip}, 已存在跳过={total_exists}")
 
 
 if __name__ == "__main__":

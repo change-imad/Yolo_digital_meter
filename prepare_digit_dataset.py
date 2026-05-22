@@ -73,8 +73,17 @@ def xyxy_to_yolo(xmin, ymin, xmax, ymax, img_w, img_h):
     return xc, yc, w, h
 
 
-def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir):
-    """处理单个 split（train/valid/test）。"""
+def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir, clean=False):
+    """处理单个 split（train/valid/test）。
+
+    Args:
+        clean: 如果为 True，先清空目标目录再处理；否则增量追加（跳过已存在的文件）。
+    """
+    if clean:
+        import shutil
+        for d in [dst_images_dir, dst_labels_dir]:
+            if os.path.isdir(d):
+                shutil.rmtree(d)
     os.makedirs(dst_images_dir, exist_ok=True)
     os.makedirs(dst_labels_dir, exist_ok=True)
 
@@ -82,10 +91,17 @@ def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir
     ok = 0
     skip_no_bigbox = 0
     skip_read_fail = 0
+    skip_exists = 0
 
     for img_path in tqdm(image_files, desc=os.path.basename(os.path.dirname(src_images_dir))):
         basename = os.path.splitext(os.path.basename(img_path))[0]
         label_path = os.path.join(src_labels_dir, basename + ".txt")
+
+        # 增量模式：跳过已存在的文件
+        dst_img_path = os.path.join(dst_images_dir, basename + ".jpg")
+        if not clean and os.path.exists(dst_img_path):
+            skip_exists += 1
+            continue
 
         # 读取图片
         img = cv2.imread(img_path)
@@ -178,7 +194,7 @@ def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir
 
         ok += 1
 
-    return ok, skip_no_bigbox, skip_read_fail
+    return ok, skip_no_bigbox, skip_read_fail, skip_exists
 
 
 def generate_data_yaml(output_dir):
@@ -207,10 +223,12 @@ def main():
     parser.add_argument("--dst", type=str,
                         default="dataset_digits",
                         help="输出数据集根目录")
+    parser.add_argument("--clean", action="store_true",
+                        help="清空目标目录后重新生成（默认增量追加，跳过已存在的文件）")
     args = parser.parse_args()
 
     splits = {"train": "train", "valid": "valid", "test": "test"}
-    total = {"ok": 0, "skip": 0, "fail": 0}
+    total = {"ok": 0, "skip": 0, "fail": 0, "exists": 0}
 
     for split_name, folder in splits.items():
         src_img = os.path.join(args.src, folder, "images")
@@ -223,14 +241,15 @@ def main():
             continue
 
         log.info(f"处理 {split_name}...")
-        ok, skip, fail = process_split(src_img, src_lbl, dst_img, dst_lbl)
+        ok, skip, fail, exists = process_split(src_img, src_lbl, dst_img, dst_lbl, clean=args.clean)
         total["ok"] += ok
         total["skip"] += skip
         total["fail"] += fail
-        log.info(f"  {split_name}: 成功={ok}, 无大框跳过={skip}, 读取失败={fail}")
+        total["exists"] += exists
+        log.info(f"  {split_name}: 成功={ok}, 无大框跳过={skip}, 读取失败={fail}, 已存在跳过={exists}")
 
     generate_data_yaml(args.dst)
-    log.info(f"全部完成: 成功={total['ok']}, 跳过={total['skip']}, 失败={total['fail']}")
+    log.info(f"全部完成: 成功={total['ok']}, 跳过={total['skip']}, 失败={total['fail']}, 已存在跳过={total['exists']}")
 
     # 打印训练指引
     print("\n" + "=" * 60)
