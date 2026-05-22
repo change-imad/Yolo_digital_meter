@@ -16,6 +16,7 @@ from ultralytics import YOLO
 
 
 def train(args):
+    print(f"exist_ok={args.exist_ok} (若为 False，同名实验目录会自动追加数字后缀)")
     # 加载预训练模型
     model = YOLO(args.model)
 
@@ -58,7 +59,7 @@ def train(args):
         patience=25,
         save=True,
         val=True,
-        exist_ok=True,
+        exist_ok=args.exist_ok,
     )
 
     return results
@@ -70,7 +71,7 @@ def main():
                         default="yolo26n-obb.pt",
                         help="预训练模型路径")
     parser.add_argument("--data", type=str,
-                        default="dataset/data.yaml",
+                        default="dataset_obb/data.yaml",
                         help="数据集配置文件路径")
     parser.add_argument("--epochs", type=int, default=200,
                         help="训练轮数")
@@ -87,6 +88,8 @@ def main():
                         help="保存目录")
     parser.add_argument("--name", type=str, default="train",
                         help="实验名称")
+    parser.add_argument("--exist_ok", action="store_true",
+                        help="允许覆盖已存在的实验目录")
     args = parser.parse_args()
 
     print(f"开始训练: model={args.model}, data={args.data}")

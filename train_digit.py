@@ -55,7 +55,7 @@ def train(args):
         patience=25,
         save=True,
         val=True,
-        exist_ok=True,
+        exist_ok=args.exist_ok,
     )
 
     return results
@@ -82,9 +82,12 @@ def main():
                         help="保存目录")
     parser.add_argument("--name", type=str, default="train",
                         help="实验名称")
+    parser.add_argument("--exist_ok", action="store_true",
+                        help="允许覆盖已存在的实验目录（默认每次训练保存到新目录）")
     args = parser.parse_args()
 
     print(f"开始训练单字检测模型: model={args.model}, data={args.data}, imgsz={args.imgsz}")
+    print(f"exist_ok={args.exist_ok} (若为 False，同名实验目录会自动追加数字后缀)")
     train(args)
 
 
