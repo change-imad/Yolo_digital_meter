@@ -14,7 +14,6 @@
 """
 
 import os
-import re
 import sys
 import argparse
 import logging
@@ -128,7 +127,7 @@ def detect_digits(digit_model, crop_img, imgsz=416, conf=0.3):
 
 # ── 拼接调试图 ──
 
-def make_debug_image(original, corners, crop_raw, crop_resized, digit_vis, reading, gt=None):
+def make_debug_image(original, corners, crop_raw, crop_resized, digit_vis, reading):
     """
     布局 (4格):
       +---------------------------+----------------------------+
@@ -187,16 +186,6 @@ def make_debug_image(original, corners, crop_raw, crop_resized, digit_vis, readi
         cv2.putText(br_img, "NO READING", (15, 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
 
-    if gt is not None:
-        gt_color = (200, 200, 200)
-        cv2.putText(br_img, f"GT: {gt}", (15, 130),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, gt_color, 1)
-        if reading:
-            match = (reading == gt)
-            tag = "MATCH" if match else "MISMATCH"
-            tag_color = (0, 255, 0) if match else (0, 0, 255)
-            cv2.putText(br_img, tag, (15, 160),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, tag_color, 2)
 
     # ── 居中拼接 ──
     def pad_to(cell, h, w):
@@ -214,12 +203,6 @@ def make_debug_image(original, corners, crop_raw, crop_resized, digit_vis, readi
 
 # ── 主逻辑 ──
 
-def parse_gt(filename):
-    """从文件名提取 GT 值, 如 id_103_value_334_42 -> 334.42"""
-    m = re.search(r"value_([\d]+)_([\d]+)", filename)
-    if m:
-        return m.group(1) + "." + m.group(2)
-    return None
 
 
 def process_single(obb_detector, digit_model, img_path, output_dir, args):
@@ -229,11 +212,10 @@ def process_single(obb_detector, digit_model, img_path, output_dir, args):
         return None
 
     basename = os.path.splitext(os.path.basename(img_path))[0]
-    gt = parse_gt(basename)
-    gt_stripped = gt.lstrip("0") if gt else None
 
     # 阶段1: OBB 检测大框
-    corners = obb_detector.detect(img)
+    detect_result = obb_detector.detect(img)
+    corners = detect_result[0] if detect_result[0] is not None else None
 
     # 阶段2: 裁剪
     crop_raw = None
@@ -263,24 +245,17 @@ def process_single(obb_detector, digit_model, img_path, output_dir, args):
         digit_vis, reading = draw_digit_boxes(crop_raw, detections, conf_threshold=args.digit_conf)
 
     # 拼接调试图
-    debug_img = make_debug_image(img, corners, crop_raw, crop_resized, digit_vis, reading, gt_stripped)
+    debug_img = make_debug_image(img, corners, crop_raw, crop_resized, digit_vis, reading)
 
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, f"{basename}_debug.jpg")
     cv2.imwrite(out_path, debug_img)
 
-    # 比对
-    reading_stripped = reading.lstrip("0") if reading else None
-    match = (reading_stripped == gt_stripped) if reading_stripped and gt_stripped else False
-
     return {
         "file": basename,
-        "gt": gt_stripped,
         "obb_detected": corners is not None,
         "digit_count": len(detections),
         "reading": reading,
-        "reading_stripped": reading_stripped,
-        "match": match,
     }
 
 
@@ -290,13 +265,13 @@ def main():
                         help="图片路径或目录")
     # OBB 模型
     parser.add_argument("--obb_weights", type=str,
-                        default=os.path.join(ROOT, "runs/obb/train/weights/best.pt"),
+                        default=os.path.join(ROOT, "runs/obb/train_2/weights/best.pt"),
                         help="YOLO-OBB 屏幕定位模型")
     parser.add_argument("--obb_imgsz", type=int, default=640)
     parser.add_argument("--obb_conf", type=float, default=0.5)
     # 单字模型
     parser.add_argument("--digit_weights", type=str,
-                        default=os.path.join(ROOT, "runs/digit/train/weights/best.pt"),
+                        default=os.path.join(ROOT, "runs/digit/train_2/weights/best.pt"),
                         help="YOLO 单字检测模型")
     parser.add_argument("--digit_imgsz", type=int, default=416)
     parser.add_argument("--digit_conf", type=float, default=0.3)
@@ -332,7 +307,7 @@ def main():
     log.info(f"共 {len(files)} 张图片待处理")
 
     # 处理
-    stats = {"total": 0, "obb_ok": 0, "digit_ok": 0, "match": 0, "mismatch": 0}
+    stats = {"total": 0, "obb_ok": 0, "digit_ok": 0}
     for i, fpath in enumerate(files):
         r = process_single(obb_detector, digit_model, fpath, args.output, args)
         if r is None:
@@ -342,14 +317,8 @@ def main():
             stats["obb_ok"] += 1
         if r["digit_count"] > 0:
             stats["digit_ok"] += 1
-        if r["match"]:
-            stats["match"] += 1
-        elif r["reading"]:
-            stats["mismatch"] += 1
-
-        status = "MATCH" if r["match"] else (f"READ={r['reading']}" if r["reading"] else "FAIL")
-        gt_str = f" GT={r['gt']}" if r["gt"] else ""
-        log.info(f"[{i+1}/{len(files)}] {r['file']}: {status}{gt_str}  "
+        status = f"READ={r['reading']}" if r["reading"] else "FAIL"
+        log.info(f"[{i+1}/{len(files)}] {r['file']}: {status}  "
                  f"(digits={r['digit_count']})")
 
         if args.show:
@@ -363,7 +332,7 @@ def main():
         cv2.destroyAllWindows()
 
     log.info(f"统计: 总计={stats['total']}, OBB检出={stats['obb_ok']}, "
-             f"单字检出={stats['digit_ok']}, 匹配={stats['match']}, 不匹配={stats['mismatch']}")
+             f"单字检出={stats['digit_ok']}")
     log.info(f"调试图已保存到: {args.output}")
 
 
