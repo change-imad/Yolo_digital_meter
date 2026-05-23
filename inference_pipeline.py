@@ -33,7 +33,33 @@ def is_frame_blurry(frame: np.ndarray, threshold: float = 100.0) -> bool:
     return cv2.Laplacian(gray, cv2.CV_64F).var() < threshold
 
 
-# 2. YOLO-OBB 屏幕定位器
+# 2. 透视变换裁剪辅助函数
+
+def _perspective_crop(frame, corners):
+    """
+    用 OBB 角点做透视变换校正，自适应输出尺寸。
+    返回正向的数显区域像素图，或在失败时回退到外接矩形裁剪。
+    """
+    h, w = frame.shape[:2]
+    pts = np.array(corners, dtype=np.float32).reshape(4, 2)
+    if pts.max() <= 1.5:
+        pts[:, 0] *= w
+        pts[:, 1] *= h
+
+    # 根据 OBB 四条边的平均长度计算自适应输出尺寸
+    def _dist(p1, p2):
+        return np.linalg.norm(p1 - p2)
+    width_top = _dist(pts[0], pts[1])
+    width_bottom = _dist(pts[3], pts[2])
+    height_left = _dist(pts[0], pts[3])
+    height_right = _dist(pts[1], pts[2])
+    out_w = max(int((width_top + width_bottom) / 2), 50)
+    out_h = max(int((height_left + height_right) / 2), 20)
+
+    return get_corrected_screen(frame, corners, output_size=(out_w, out_h))
+
+
+# 3. YOLO-OBB 屏幕定位器
 
 class ScreenDetector:
     """阶段一：YOLO-OBB 检测数显大框。"""
@@ -51,7 +77,7 @@ class ScreenDetector:
         """
         返回 (corners, crop_img) 或 (None, None)。
         corners: (4,2) 归一化角点
-        crop_img: 从原图直接裁剪的数显区域像素图
+        crop_img: 透视变换校正后的数显区域像素图
         """
         results = self.model(frame, imgsz=self.imgsz, conf=self.conf,
                              device=self.device, verbose=False)
@@ -63,17 +89,8 @@ class ScreenDetector:
         box = obb.xywhr[best_idx].cpu().numpy()
         corners = self._xywhr_to_corners(box, frame.shape[:2])
 
-        # 用角点的外接矩形直接裁剪（保持像素质量）
-        h, w = frame.shape[:2]
-        pts = np.array(corners, dtype=np.float32).reshape(4, 2)
-        if pts.max() <= 1.5:
-            pts[:, 0] *= w
-            pts[:, 1] *= h
-        x1 = max(int(pts[:, 0].min()), 0)
-        y1 = max(int(pts[:, 1].min()), 0)
-        x2 = min(int(pts[:, 0].max()), w)
-        y2 = min(int(pts[:, 1].max()), h)
-        crop = frame[y1:y2, x1:x2]
+        # 透视变换校正（自适应输出尺寸）
+        crop = _perspective_crop(frame, corners)
 
         return corners, crop
 

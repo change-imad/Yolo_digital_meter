@@ -4,12 +4,12 @@
 
 流程:
   阶段1: YOLO-OBB 检测数显大框 → 原图上画旋转框
-  阶段2: 裁剪数显长条区域
-  阶段3: YOLO 单字检测 (0-9) → 长条图上画每个数字框 + 类别标签
+  阶段2: 透视变换校正裁剪数显区域
+  阶段3: YOLO 单字检测 (0-9) → 校正图上画每个数字框 + 类别标签
   阶段4: 按位置排序拼接读数结果
 
 用法:
-  python debug/debug_visualize_yolo.py --source water_meter_Standard/test/images/
+  python debug/debug_visualize_yolo.py --source dataset_obb/test/images/
   python debug/debug_visualize_yolo.py --source test.jpg --show
 """
 
@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path = [p for p in sys.path if p != "" and p != os.getcwd()]
 sys.path.insert(0, ROOT)
 
-from inference_pipeline import YOLOBBDetector, get_corrected_screen
+from inference_pipeline import YOLOBBDetector, get_corrected_screen, _perspective_crop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def draw_digit_boxes(img, detections, conf_threshold=0.3):
     """
     在裁剪图上绘制所有单字检测框。
     detections: list of (class_id, x_c, y_c, w, h, conf) 归一化坐标
-    返回: 按位置排序的读数字符串
+    返回: (vis_img, reading_str)
     """
     h, w = img.shape[:2]
     vis = img.copy()
@@ -92,20 +92,6 @@ def draw_digit_boxes(img, detections, conf_threshold=0.3):
     return vis, "".join(reading_chars)
 
 
-def crop_by_obb(img, corners, output_size=(300, 100)):
-    """用 OBB 角点裁剪并透视校正，返回校正图。"""
-    return get_corrected_screen(img, corners, output_size=output_size)
-
-
-def crop_by_xyxy(img, box_xyxy):
-    """用 (x1,y1,x2,y2) 像素坐标直接裁剪。"""
-    h, w = img.shape[:2]
-    x1, y1, x2, y2 = box_xyxy
-    x1, y1 = max(int(x1), 0), max(int(y1), 0)
-    x2, y2 = min(int(x2), w), min(int(y2), h)
-    return img[y1:y2, x1:x2]
-
-
 # ── 检测逻辑 ──
 
 def detect_digits(digit_model, crop_img, imgsz=416, conf=0.3):
@@ -127,82 +113,79 @@ def detect_digits(digit_model, crop_img, imgsz=416, conf=0.3):
 
 # ── 拼接调试图 ──
 
-def make_debug_image(original, corners, crop_raw, crop_resized, digit_vis, reading):
+def make_debug_image(original, corners, crop_perspective, digit_vis, reading):
     """
-    布局 (4格):
+    布局 (2列 × 2行):
       +---------------------------+----------------------------+
-      |  原图 + OBB 大框           |  裁剪长条 (原尺寸放大)       |
+      |  原图 + OBB 大框           |  透视校正裁剪               |
       +---------------------------+----------------------------+
-      |  长条 + 单字检测框          |  读数结果                   |
+      |  校正图 + 单字检测框        |  读数结果                   |
       +---------------------------+----------------------------+
     """
-    col_w, row_h = 500, 200
+    col_w, row_h = 500, 250
 
-    # ── 左上: 原图 + OBB ──
-    tl_img = original.copy()
-    if corners is not None:
-        draw_obb_box(tl_img, corners, label="screen")
-    h1, w1 = tl_img.shape[:2]
-    scale = min(col_w / w1, row_h / h1)
-    tl_img = cv2.resize(tl_img, (int(w1 * scale), int(h1 * scale)))
-    cv2.putText(tl_img, "1. OBB Detect", (5, 18),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
-
-    # ── 右上: 裁剪长条原貌 ──
-    if crop_raw is not None:
-        tr_img = crop_raw.copy()
-        if len(tr_img.shape) == 2:
-            tr_img = cv2.cvtColor(tr_img, cv2.COLOR_GRAY2BGR)
-        # 保持宽高比放大到可视
-        ch, cw = tr_img.shape[:2]
-        s2 = min(col_w / cw, row_h / ch) * 0.9
-        tr_img = cv2.resize(tr_img, (int(cw * s2), int(ch * s2)))
-    else:
-        tr_img = np.zeros((40, 200, 3), dtype=np.uint8)
-    cv2.putText(tr_img, "2. Crop (raw)", (5, 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1)
-
-    # ── 左下: 长条 + 单字框 ──
-    if digit_vis is not None:
-        bl_img = digit_vis.copy()
-        dh, dw = bl_img.shape[:2]
-        s3 = min(col_w / dw, row_h / dh) * 0.9
-        bl_img = cv2.resize(bl_img, (int(dw * s3), int(dh * s3)))
-    else:
-        bl_img = np.zeros((40, 200, 3), dtype=np.uint8)
-    cv2.putText(bl_img, "3. Digit Detect", (5, 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1)
-
-    # ── 右下: 读数结果 ──
-    br_img = np.full((row_h, col_w, 3), 30, dtype=np.uint8)
-    cv2.putText(br_img, "4. Reading", (5, 18),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
-
-    if reading:
-        color = (0, 255, 0)
-        cv2.putText(br_img, reading, (15, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 2.0, color, 3)
-    else:
-        cv2.putText(br_img, "NO READING", (15, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
-
-
-    # ── 居中拼接 ──
     def pad_to(cell, h, w):
         ch, cw = cell.shape[:2]
         canvas = np.full((h, w, 3), 20, dtype=np.uint8)
-        y = (h - ch) // 2
-        x = (w - cw) // 2
-        canvas[y:y+ch, x:x+cw] = cell
+        y_off = max((h - ch) // 2, 0)
+        x_off = max((w - cw) // 2, 0)
+        # 如果 cell 比画布大，先缩放
+        if ch > h or cw > w:
+            s = min(w / cw, h / ch) * 0.95
+            cell = cv2.resize(cell, (int(cw * s), int(ch * s)))
+            ch, cw = cell.shape[:2]
+            y_off = (h - ch) // 2
+            x_off = (w - cw) // 2
+        canvas[y_off:y_off+ch, x_off:x_off+cw] = cell
         return canvas
 
-    top = np.hstack([pad_to(tl_img, row_h, col_w), pad_to(tr_img, row_h, col_w)])
-    bot = np.hstack([pad_to(bl_img, row_h, col_w), pad_to(br_img, row_h, col_w)])
+    # ── 左上: 原图 + OBB ──
+    tl = original.copy()
+    if corners is not None:
+        draw_obb_box(tl, corners, label="screen")
+    h1, w1 = tl.shape[:2]
+    scale = min(col_w / w1, row_h / h1)
+    tl = cv2.resize(tl, (int(w1 * scale), int(h1 * scale)))
+    cv2.putText(tl, "1. OBB Detect", (5, 18),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+
+    # ── 右上: 透视校正裁剪 ──
+    if crop_perspective is not None:
+        tr = crop_perspective.copy()
+        if len(tr.shape) == 2:
+            tr = cv2.cvtColor(tr, cv2.COLOR_GRAY2BGR)
+    else:
+        tr = np.zeros((40, 200, 3), dtype=np.uint8)
+    cv2.putText(tr, "2. Perspective Crop", (5, 15),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 128), 1)
+
+    # ── 左下: 校正图 + 单字框 ──
+    if digit_vis is not None:
+        bl = digit_vis.copy()
+    else:
+        bl = np.zeros((40, 200, 3), dtype=np.uint8)
+    cv2.putText(bl, "3. Digit Detect", (5, 15),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 128), 1)
+
+    # ── 右下: 读数结果 ──
+    br = np.full((row_h, col_w, 3), 30, dtype=np.uint8)
+    cv2.putText(br, "4. Reading", (5, 18),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+
+    if reading:
+        cv2.putText(br, reading, (15, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 0), 3)
+    else:
+        cv2.putText(br, "NO READING", (15, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
+
+    # ── 拼接 ──
+    top = np.hstack([pad_to(tl, row_h, col_w), pad_to(tr, row_h, col_w)])
+    bot = np.hstack([pad_to(bl, row_h, col_w), pad_to(br, row_h, col_w)])
     return np.vstack([top, bot])
 
 
 # ── 主逻辑 ──
-
 
 
 def process_single(obb_detector, digit_model, img_path, output_dir, args):
@@ -217,35 +200,23 @@ def process_single(obb_detector, digit_model, img_path, output_dir, args):
     detect_result = obb_detector.detect(img)
     corners = detect_result[0] if detect_result[0] is not None else None
 
-    # 阶段2: 裁剪
-    crop_raw = None
-    crop_resized = None
+    # 阶段2: 透视变换校正裁剪
+    crop_perspective = None
     if corners is not None:
-        crop_raw = crop_by_obb(img, corners, output_size=(300, 100))
-        # 同时用原图直接裁剪（保持像素质量）
-        h, w = img.shape[:2]
-        pts = np.array(corners, dtype=np.float32).reshape(4, 2)
-        if pts.max() <= 1.5:
-            pts[:, 0] *= w
-            pts[:, 1] *= h
-        # 取外接矩形直接裁剪
-        x_min = int(pts[:, 0].min())
-        y_min = int(pts[:, 1].min())
-        x_max = int(pts[:, 0].max())
-        y_max = int(pts[:, 1].max())
-        crop_raw = crop_by_xyxy(img, (x_min, y_min, x_max, y_max))
+        crop_perspective = _perspective_crop(img, corners)
 
     # 阶段3: 单字检测
     detections = []
     digit_vis = None
     reading = None
-    if crop_raw is not None:
-        detections = detect_digits(digit_model, crop_raw,
+    if crop_perspective is not None:
+        detections = detect_digits(digit_model, crop_perspective,
                                    imgsz=args.digit_imgsz, conf=args.digit_conf)
-        digit_vis, reading = draw_digit_boxes(crop_raw, detections, conf_threshold=args.digit_conf)
+        digit_vis, reading = draw_digit_boxes(
+            crop_perspective, detections, conf_threshold=args.digit_conf)
 
-    # 拼接调试图
-    debug_img = make_debug_image(img, corners, crop_raw, crop_resized, digit_vis, reading)
+    # 拼接调试图 (2×2 布局)
+    debug_img = make_debug_image(img, corners, crop_perspective, digit_vis, reading)
 
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, f"{basename}_debug.jpg")
