@@ -20,9 +20,6 @@ from typing import Optional, Tuple, List, Dict
 import cv2
 import numpy as np
 
-import sys
-sys.path = [p for p in sys.path if p != "" and p != os.getcwd()]
-
 log = logging.getLogger(__name__)
 
 DIGIT_NAMES = [str(i) for i in range(10)]

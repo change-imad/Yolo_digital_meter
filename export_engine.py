@@ -6,9 +6,6 @@
 
 import platform
 import argparse
-import sys, os
-# 移除当前目录，避免本地 ultralytics/ 目录遮蔽 pip 安装的包
-sys.path = [p for p in sys.path if p != '' and p != os.getcwd()]
 from ultralytics import YOLO
 
 

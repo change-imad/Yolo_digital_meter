@@ -9,10 +9,6 @@
 """
 
 import argparse
-import sys
-import os
-
-sys.path = [p for p in sys.path if p != "" and p != os.getcwd()]
 from ultralytics import YOLO
 
 
