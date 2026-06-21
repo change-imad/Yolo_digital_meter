@@ -5,7 +5,7 @@
 
 ## 系统架构
 ```
-视频流->前端过滤->阶段一OBB定位->裁剪仪表区域->阶段二单字识别->时序投票筛选->输出
+视频流->前端过滤->阶段一OBB定位->裁剪仪表区域->CLAHE增强->阶段二单字识别->时序投票筛选->输出
 ```
 ---
 
@@ -45,6 +45,7 @@ conda create -n d2l python=3.9 -y
 conda activate d2l
 
 # 安装 PyTorch，根据显卡配置
+# Jetson平台需下载whl文件进行编译
 pip install torch==1.13
 
 pip install ultralytics
@@ -146,10 +147,11 @@ python export_engine.py --weights runs/digit/train/weights/best.pt --imgsz 416
 ```python
 from inference_pipeline import DigitalMeterPipeline
 
-# 初始化（默认不保存文件）
+# 初始化（默认不保存文件，CLAHE 增强默认开启）
 pipeline = DigitalMeterPipeline(
     obb_weights="runs/obb/train/weights/best.pt",
     digit_weights="runs/digit/train/weights/best.pt",
+    enhance_enabled=True,   # CLAHE 增强预处理（默认开启，可设 False 对比）
 )
 
 # 处理单帧，返回读数字符串
@@ -160,23 +162,37 @@ print(reading)  # 例如 "33442"
 pipeline_with_log = DigitalMeterPipeline(
     obb_weights="runs/obb/train/weights/best.pt",
     digit_weights="runs/digit/train/weights/best.pt",
-    output_dir="results",  # 写入 JSON/CSV
+    enhance_enabled=True,   # CLAHE 增强，提升实机光照不均下的文字对比度
+    output_dir="results",   # 写入 JSON/CSV
 )
 ```
+
+> **性能优化**：两阶段 YOLO 推理均使用 `torch.no_grad()` 包裹，并立即 `.cpu().item()` 释放显存引用，避免隐式梯度记录导致的显存累积，Jetson 等显存受限平台运行更稳定。
 
 ### 6. 可视化调试
 
 ```bash
+# 默认开启 CLAHE 增强（与主 Pipeline 一致）
 python debug/debug_visualize_yolo.py \
     --source dataset/<your_dataset>/test/images/ \
     --show
+
+# 关闭增强，用于 A/B 对比增强前后效果
+python debug/debug_visualize_yolo.py \
+    --source test.jpg \
+    --no-enhance
 ```
 
-输出四阶段对比图到 `debug/output_yolo/`：
+输出四阶段对比图到 `debug/output_4/`：
 - 左上：原图 + OBB 检测框
-- 右上：裁剪的数显长条
-- 左下：单字检测框 + 类别标签
-- 右下：拼接读数 + GT 对比
+- 右上：裁剪的数显长条（**原始裁剪**）
+- 左下：增强后图像 + 单字检测框 + 类别标签（**真实推理输入**）
+- 右下：拼接读数结果
+
+| 参数 | 说明 |
+|------|------|
+| `--enhance` | 启用 CLAHE 增强预处理（默认开启） |
+| `--no-enhance` | 关闭增强，便于 A/B 对比效果 |
 
 ---
 
@@ -188,19 +204,32 @@ python debug/debug_visualize_yolo.py \
 pipeline = DigitalMeterPipeline(
     obb_weights="...",          # OBB 模型权重
     digit_weights="...",        # 单字检测权重
-    blur_threshold=100.0,       # 拉普拉斯模糊阈值
+    blur_threshold=50.0,        # 拉普拉斯模糊阈值
     obb_conf=0.5,               # OBB 置信度阈值
     digit_conf=0.3,             # 单字检测置信度阈值
     obb_imgsz=640,              # OBB 输入尺寸
     digit_imgsz=416,            # 单字检测输入尺寸
-    voting_window=10,           # 时序投票窗口
-    stability_threshold=5,      # 稳定性判定帧数
+    voting_window=18,           # 时序投票窗口
+    stability_threshold=3,      # 稳定性判定帧数
+    enhance_enabled=True,       # CLAHE 裁剪图增强预处理（默认开启）
     output_dir=None,            # None=不保存文件, "results"=写 JSON/CSV
     device="0",                 # 推理设备
 )
 
 reading = pipeline.process_frame(frame, uav_lat=0, uav_lon=0, uav_alt=0)
 # 返回: 读数字符串 或 None
+```
+
+### `enhance_crop`
+
+CLAHE 裁剪图增强函数
+
+```python
+from inference_pipeline import enhance_crop
+
+# 对裁剪图做 LAB 颜色空间的亮度通道 CLAHE 均衡
+enhanced = enhance_crop(crop_img, enable=True, clip_limit=2.0, tile_grid=8)
+# enable=False 时原样返回，便于 A/B 对比
 ```
 
 ### `ScreenDetector`
@@ -276,10 +305,18 @@ voter.is_stable()           # 是否稳定
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `blur_threshold` | 100.0 | 降低保留更多帧；升高过滤更严格 |
-| `obb_conf` | 0.5 | OBB 检出阈值，降低检出更多但误检增加 |
+| `blur_threshold` | 50.0 | 降低保留更多帧；升高过滤更严格 |
+| `obb_conf` | 0.5 | OBB 检出阈值 |
 | `digit_conf` | 0.3 | 单字检出阈值，建议 0.3-0.5 |
-| `voting_window` | 10 | 增大更稳定但延迟高 |
-| `stability_threshold` | 5 | 必须小于 voting_window |
-| `obb_imgsz` | 640 | Jetson 可降至 416 提速 |
-| `digit_imgsz` | 416 | 裁剪图本身较小，416 通常足够 |
+| `voting_window` | 18 | 增大更稳定但延迟高 |
+| `stability_threshold` | 3 | 必须小于 voting_window |
+| `obb_imgsz` | 640 | obb模型输入图像尺寸 |
+| `digit_imgsz` | 416 | 单字识别输入尺寸 |
+| `enhance_enabled` | True | CLAHE 裁剪图增强预处理；设 False 可关闭对比效果 |
+
+### 增强预处理说明
+
+`enhance_crop()` 采用 **LAB 颜色空间 + CLAHE**：
+- 仅对亮度通道 L 做自适应直方图均衡化，**避免颜色畸变**
+- 提升数显 LCD 文字对比度，对**实机环境光照不均、反光**更鲁棒
+- 默认开启，可通过 `enhance_enabled=False` 或调试脚本 `--no-enhance` 关闭以 A/B 对比
