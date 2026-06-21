@@ -44,7 +44,7 @@ def process_split(src_images, src_labels, dst_images, dst_labels, big_class_id, 
         clean: 如果为 True，先清空目标目录再处理；否则增量追加（跳过已存在的文件）。
     """
     if clean:
-        import shutil
+        #import shutil
         for d in [dst_images, dst_labels]:
             if os.path.isdir(d):
                 shutil.rmtree(d)
@@ -84,10 +84,10 @@ def process_split(src_images, src_labels, dst_images, dst_labels, big_class_id, 
             skip += 1
             continue
 
-        # symlink 图片（节省空间）
+        # 复制图片
         dst_img = os.path.join(dst_images, basename + ".jpg")
         if not os.path.exists(dst_img):
-            os.symlink(os.path.abspath(img_path), dst_img)
+            shutil.copy(img_path, dst_img)
 
         # 写 OBB 标签
         with open(dst_lbl_path, "w") as f:

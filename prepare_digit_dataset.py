@@ -91,7 +91,7 @@ def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir
             skip_exists += 1
             continue
 
-        # 💡 【核心修改 1】使用 np.fromfile 绕过 OpenCV 无法读取特殊/乱码字符路径的 Bug
+        # 使用 np.fromfile 绕过 OpenCV 无法读取特殊/乱码字符路径的 Bug
         try:
             img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_COLOR)
         except Exception:
@@ -132,7 +132,7 @@ def process_split(src_images_dir, src_labels_dir, dst_images_dir, dst_labels_dir
             skip_no_bigbox += 1
             continue
 
-        # 💡 【核心修改 2】使用 cv2.imencode 保存图片，确保包含特殊字符的目的路径也能正常写入
+        # 使用 cv2.imencode 保存图片，确保包含特殊字符的目的路径也能正常写入
         dst_out_path = os.path.join(dst_images_dir, basename + ".jpg")
         _, img_encode = cv2.imencode('.jpg', crop)
         img_encode.tofile(dst_out_path)
@@ -188,7 +188,6 @@ def generate_data_yaml(output_dir):
     }
     yaml_path = os.path.join(output_dir, "data.yaml")
     with open(yaml_path, "w", encoding="utf-8") as f:
-        # 💡 【核心修改 3】删掉了这里面多余重复的内层局部 import yaml
         yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
     log.info(f"data.yaml 已生成: {yaml_path}")
 
