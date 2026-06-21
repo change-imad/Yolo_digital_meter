@@ -10,7 +10,6 @@ __pycache__/
 # 忽略 ultralytics 框架源码或大库（如果你是通过 pip 安装的，本地不需要提交它）
 ultralytics/
 
-# 忽略 Claude 的本地配置历史
-.claude/
+.vscode
 
-/debug/output_2
+/debug/output*

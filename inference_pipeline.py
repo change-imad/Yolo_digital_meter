@@ -3,7 +3,8 @@
 数字仪表读数推理 Pipeline (双 YOLO 版)
 
 流程: 拉普拉斯模糊过滤 → YOLO-OBB 屏幕定位 → 裁剪数显区域
-      → YOLO 单字检测(0-9) → 按位置排序拼接读数 → 时序投票 → 结果上报
+      → 裁剪图 CLAHE 增强 → YOLO 单字检测(0-9) → 按位置排序拼接读数
+      → 时序投票 → 结果上报
 
 支持 x86_64 (PC) 和 aarch64 (Jetson) 双平台。
 """
@@ -19,6 +20,7 @@ from typing import Optional, Tuple, List, Dict
 
 import cv2
 import numpy as np
+import torch
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +61,44 @@ def _perspective_crop(frame, corners):
     return get_corrected_screen(frame, corners, output_size=(out_w, out_h))
 
 
+# 2.5 裁剪图增强预处理（CLAHE）
+
+def enhance_crop(crop_img: np.ndarray, enable: bool = True,
+                 clip_limit: float = 2.0, tile_grid: int = 8) -> np.ndarray:
+    """
+    对裁剪图进行 CLAHE 自适应直方图均衡化，提升数显 LCD 文字对比度。
+
+    在 LAB 颜色空间仅对亮度通道 L 做均衡，避免颜色畸变，
+    对实机环境光照不均、反光更鲁棒。
+
+    Args:
+        crop_img: 透视裁剪后的数显区域图像（BGR 或灰度）
+        enable: False 时原样返回，便于 A/B 对比
+        clip_limit: CLAHE 对比度限制（默认 2.0）
+        tile_grid: CLAHE 分块尺寸（默认 8x8）
+
+    Returns:
+        增强后的图像（与输入同通道数）
+    """
+    if not enable or crop_img is None or crop_img.size == 0:
+        return crop_img
+
+    # 灰度图直接均衡
+    if len(crop_img.shape) == 2:
+        clahe = cv2.createCLAHE(clipLimit=clip_limit,
+                                tileGridSize=(tile_grid, tile_grid))
+        return clahe.apply(crop_img)
+
+    # BGR → LAB，仅增强 L 通道，避免颜色畸变
+    lab = cv2.cvtColor(crop_img, cv2.COLOR_BGR2LAB)
+    l_chan, a_chan, b_chan = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=clip_limit,
+                            tileGridSize=(tile_grid, tile_grid))
+    l_chan = clahe.apply(l_chan)
+    lab = cv2.merge((l_chan, a_chan, b_chan))
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
 # 3. YOLO-OBB 屏幕定位器
 
 class ScreenDetector:
@@ -79,8 +119,10 @@ class ScreenDetector:
         corners: (4,2) 归一化角点
         crop_img: 透视变换校正后的数显区域像素图
         """
-        results = self.model(frame, imgsz=self.imgsz, conf=self.conf,
-                             device=self.device, verbose=False)
+        # torch.no_grad() 避免隐式梯度记录占用显存
+        with torch.no_grad():
+            results = self.model(frame, imgsz=self.imgsz, conf=self.conf,
+                                 device=self.device, verbose=False)
         if not results or len(results[0].obb) == 0:
             return None, None
 
@@ -136,17 +178,20 @@ class DigitDetector:
             avg_conf: 平均置信度
             digit_count: 检测到的数字个数
         """
-        results = self.model(crop_img, imgsz=self.imgsz, conf=self.conf,
-                             device=self.device, verbose=False)
+        # torch.no_grad() 避免隐式梯度记录占用显存
+        with torch.no_grad():
+            results = self.model(crop_img, imgsz=self.imgsz, conf=self.conf,
+                                 device=self.device, verbose=False)
         if not results or results[0].boxes is None or len(results[0].boxes) == 0:
             return "", 0.0, 0
 
         boxes = results[0].boxes
         detections = []
         for i in range(len(boxes)):
-            cls = int(boxes.cls[i])
+            # .cpu().item() 立即取值，释放 GPU 张量引用
+            cls = int(boxes.cls[i].cpu().item())
             xc, yc, w, h = boxes.xywhn[i].cpu().numpy()
-            conf = float(boxes.conf[i])
+            conf = float(boxes.conf[i].cpu().item())
             detections.append((cls, xc, yc, w, h, conf))
 
         # 按 x 中心从左到右排序
@@ -249,7 +294,7 @@ class DigitalMeterPipeline:
     """
     数字仪表读数完整 Pipeline（双 YOLO）
 
-    流程: 模糊过滤 → OBB 屏幕定位 → 裁剪 → 单字检测 → 排序拼接 → 时序投票
+    流程: 模糊过滤 → OBB 屏幕定位 → 裁剪 → CLAHE 增强 → 单字检测 → 排序拼接 → 时序投票
 
     Usage:
         pipeline = DigitalMeterPipeline(obb_weights="...", digit_weights="...")
@@ -260,15 +305,16 @@ class DigitalMeterPipeline:
     """
 
     def __init__(self,
-                 obb_weights: str = "runs/obb/train/weights/best.pt",
-                 digit_weights: str = "runs/digit/train/weights/best.pt",
-                 blur_threshold: float = 100.0,
+                 obb_weights: str = "runs/obb/train_3/weights/best.pt",
+                 digit_weights: str = "runs/digit/train_3/weights/best.pt",
+                 blur_threshold: float = 50.0,
                  obb_conf: float = 0.5,
                  digit_conf: float = 0.3,
                  obb_imgsz: int = 640,
                  digit_imgsz: int = 416,
-                 voting_window: int = 10,
-                 stability_threshold: int = 5,
+                 voting_window: int = 18,
+                 stability_threshold: int = 3,
+                 enhance_enabled: bool = True,
                  output_dir: Optional[str] = None,
                  device: str = "0"):
         """
@@ -280,10 +326,12 @@ class DigitalMeterPipeline:
             obb_imgsz / digit_imgsz: 两阶段输入尺寸
             voting_window: 时序投票滑动窗口大小
             stability_threshold: 连续多少帧一致判定为稳定
+            enhance_enabled: 是否启用裁剪图 CLAHE 增强预处理（默认 True）
             output_dir: 结果保存目录，None 则不保存文件（默认）
             device: 推理设备 ("0", "cpu")
         """
         self.blur_threshold = blur_threshold
+        self.enhance_enabled = enhance_enabled
 
         self.screen_detector = ScreenDetector(
             weights=obb_weights, device=device, imgsz=obb_imgsz, conf=obb_conf)
@@ -320,6 +368,10 @@ class DigitalMeterPipeline:
         if corners is None or crop is None:
             self.skip_no_screen += 1
             return None
+
+        # Step 2.5: 裁剪图增强预处理（CLAHE 提升文字对比度）
+        if self.enhance_enabled:
+            crop = enhance_crop(crop, enable=True)
 
         # Step 3: 单字检测 + 排序拼接
         reading, avg_conf, digit_count = self.digit_detector.detect(crop)
@@ -370,6 +422,7 @@ class YOLOBBDetector(ScreenDetector):
 
 __all__ = [
     "is_frame_blurry",
+    "enhance_crop",
     "get_corrected_screen",
     "ScreenDetector",
     "DigitDetector",
