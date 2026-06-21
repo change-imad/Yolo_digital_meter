@@ -5,8 +5,8 @@ from inference_pipeline import DigitalMeterPipeline
 def main():
     # 初始化
     pipeline = DigitalMeterPipeline(
-        obb_weights="runs/obb/train/weights/best.pt",
-        digit_weights="runs/digit/train/weights/best.pt",
+        obb_weights="runs/obb/train_3/weights/best.pt",
+        digit_weights="runs/digit/train_3/weights/best.pt",
     )
 
     #调用本地摄像头
