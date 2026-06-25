@@ -209,13 +209,14 @@ class DigitDetector:
 
 class TemporalVoter:
     """
-    滑动窗口时序投票器。
-    逐位字符投票 + 置信度加权，剔除野值，结果稳定后触发输出。
+    ：滑动窗口时序投票器
     """
-
-    def __init__(self, window_size: int = 10, stability_threshold: int = 5):
+    def __init__(self, window_size: int = 10, stability_threshold: int = 5,
+                 quorum_ratio: float = 0.5, min_consistency: float = 0.6):
         self.window_size = window_size
         self.stability_threshold = stability_threshold
+        self.quorum_ratio = quorum_ratio
+        self.min_consistency = min_consistency
         self.queue: deque = deque(maxlen=window_size)
         self._last_stable: Optional[str] = None
         self._stable_count: int = 0
@@ -227,23 +228,63 @@ class TemporalVoter:
     def vote(self) -> Optional[str]:
         if len(self.queue) == 0:
             return None
-        max_len = max(len(t) for t, _ in self.queue)
+
+        n = len(self.queue)
+
+        # 取位数众数作为标准长度
+        target_len = self._mode_length()
+        if target_len == 0:
+            return None
+
+        # 整体一致率检查
+        consistency = sum(1 for t, _ in self.queue if len(t) == target_len) / n
+        if consistency < self.min_consistency:
+            # 窗口处于长度动荡期，重置连续稳定计数，保护数据安全性
+            self._stable_count = 0 
+            return None
+
+        # 右对齐逐位置信度加权投票
+        min_support = max(1, int(n * self.quorum_ratio))
         result_chars = []
-        for pos in range(max_len):
+        has_invalid_char = False  # 标记是否包含无法达标的位
+
+        for pos in range(target_len):
             char_votes: Dict[str, float] = {}
+            support = 0
             for text, conf in self.queue:
-                if pos < len(text):
-                    ch = text[pos]
+                idx = len(text) - target_len + pos
+                
+                if 0 <= idx < len(text):
+                    ch = text[idx]
                     char_votes[ch] = char_votes.get(ch, 0.0) + conf
-            if char_votes:
+                    support += 1
+            
+            # 校验当前位的法定支持票数
+            if char_votes and support >= min_support:
                 result_chars.append(max(char_votes, key=char_votes.get))
+            else:
+                result_chars.append('?')
+                has_invalid_char = True
+
+        if has_invalid_char:
+            return None
+
         result = "".join(result_chars)
+
         if result == self._last_stable:
             self._stable_count += 1
         else:
             self._last_stable = result
             self._stable_count = 1
+            
         return result
+
+    def _mode_length(self) -> int:
+        if not self.queue:
+            return 0
+        from collections import Counter
+        length_counts = Counter(len(t) for t, _ in self.queue)
+        return length_counts.most_common(1)[0][0]
 
     def is_stable(self) -> bool:
         return self._stable_count >= self.stability_threshold
@@ -252,7 +293,6 @@ class TemporalVoter:
         self.queue.clear()
         self._last_stable = None
         self._stable_count = 0
-
 
 # 5. 结果上报模块
 
@@ -314,6 +354,8 @@ class DigitalMeterPipeline:
                  digit_imgsz: int = 416,
                  voting_window: int = 18,
                  stability_threshold: int = 3,
+                 quorum_ratio: float = 0.5,
+                 min_consistency: float = 0.6,
                  enhance_enabled: bool = True,
                  output_dir: Optional[str] = None,
                  device: str = "0"):
@@ -326,6 +368,8 @@ class DigitalMeterPipeline:
             obb_imgsz / digit_imgsz: 两阶段输入尺寸
             voting_window: 时序投票滑动窗口大小
             stability_threshold: 连续多少帧一致判定为稳定
+            quorum_ratio: 单位投票最少支持帧比例（0-1），低于则该位判为不可靠
+            min_consistency: 窗口内位数一致的帧比例下限（0-1），低于则整体判为不可靠
             enhance_enabled: 是否启用裁剪图 CLAHE 增强预处理（默认 True）
             output_dir: 结果保存目录，None 则不保存文件（默认）
             device: 推理设备 ("0", "cpu")
@@ -338,7 +382,8 @@ class DigitalMeterPipeline:
         self.digit_detector = DigitDetector(
             weights=digit_weights, device=device, imgsz=digit_imgsz, conf=digit_conf)
         self.voter = TemporalVoter(
-            window_size=voting_window, stability_threshold=stability_threshold)
+            window_size=voting_window, stability_threshold=stability_threshold,
+            quorum_ratio=quorum_ratio, min_consistency=min_consistency)
         self.reporter = ResultReporter(output_dir=output_dir) if output_dir else None
 
         self.frame_count = 0
@@ -384,8 +429,8 @@ class DigitalMeterPipeline:
         self.voter.add(reading, avg_conf)
         voted = self.voter.vote()
 
-        # Step 5: 稳定后可选上报
-        if voted and self.voter.is_stable() and self.reporter:
+        # Step 5: 稳定后可选上报（结果含 '?' 表示有不可靠位，不上报）
+        if voted and '?' not in voted and self.voter.is_stable() and self.reporter:
             self.reporter.report(voted, avg_conf, uav_lat, uav_lon, uav_alt)
 
         return voted

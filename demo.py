@@ -10,11 +10,11 @@ def main():
     )
 
     pipeline = DigitalMeterPipeline(
-    obb_weights="runs/obb/train_3/weights/best.pt",             # OBB 模型权重
-    digit_weights="runs/digit/train_3/weights/best.pt",         # 单字检测权重
+    obb_weights="runs/obb/train_3/weights/best.engine",             # OBB 模型权重
+    digit_weights="runs/digit/train_3/weights/best.engine",         # 单字检测权重
     blur_threshold=20.0,        # 拉普拉斯模糊阈值
-    obb_conf=0.5,               # OBB 置信度阈值
-    digit_conf=0.3,             # 单字检测置信度阈值
+    obb_conf=0.6,               # OBB 置信度阈值
+    digit_conf=0.6,             # 单字检测置信度阈值
     obb_imgsz=640,              # OBB 输入尺寸
     digit_imgsz=416,            # 单字检测输入尺寸
     voting_window=8,           # 时序投票窗口

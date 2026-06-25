@@ -224,8 +224,10 @@ pipeline = DigitalMeterPipeline(
     digit_conf=0.3,             # 单字检测置信度阈值
     obb_imgsz=640,              # OBB 输入尺寸
     digit_imgsz=416,            # 单字检测输入尺寸
-    voting_window=18,           # 时序投票窗口
-    stability_threshold=3,      # 稳定性判定帧数
+    voting_window=18,           # 时序投票滑动窗口大小
+    stability_threshold=3,      # 连续一致帧数判定稳定
+    quorum_ratio=0.5,           # 单位投票最少支持帧比例，低于则该位判为不可靠
+    min_consistency=0.6,        # 窗口内位数一致比例下限，低于则整体判为不可靠
     enhance_enabled=True,       # CLAHE 裁剪图增强预处理（默认开启）
     output_dir=None,            # None=不保存文件, "results"=写 JSON/CSV
     device="0",                 # 推理设备
@@ -265,15 +267,6 @@ corners, crop = detector.detect(frame)
 detector = DigitDetector(weights="best.pt", device="0", imgsz=416, conf=0.3)
 reading, avg_conf, digit_count = detector.detect(crop_image)
 # reading: "33442", avg_conf: 0.92, digit_count: 5
-```
-
-### `TemporalVoter`
-
-```python
-voter = TemporalVoter(window_size=10, stability_threshold=5)
-voter.add("33442", 0.95)
-result = voter.vote()       # 加权投票
-voter.is_stable()           # 是否稳定
 ```
 
 ---
@@ -323,8 +316,10 @@ voter.is_stable()           # 是否稳定
 | `blur_threshold` | 50.0 | 降低保留更多帧；升高过滤更严格 |
 | `obb_conf` | 0.5 | OBB 检出阈值 |
 | `digit_conf` | 0.3 | 单字检出阈值，建议 0.3-0.5 |
-| `voting_window` | 18 | 增大更稳定但延迟高 |
-| `stability_threshold` | 3 | 必须小于 voting_window |
+| `voting_window` | 18 | 时序投票滑动窗口大小，增大更稳定但延迟高 |
+| `stability_threshold` | 3 | 连续一致帧数判定稳定，必须小于 voting_window |
+| `quorum_ratio` | 0.5 | 单位（单个数字位）投票最少支持帧比例（0-1），低于则该位判为不可靠 |
+| `min_consistency` | 0.6 | 窗口内位数一致的帧比例下限（0-1），低于则整体判为不可靠 |
 | `obb_imgsz` | 640 | obb模型输入图像尺寸 |
 | `digit_imgsz` | 416 | 单字识别输入尺寸 |
 | `enhance_enabled` | True | CLAHE 裁剪图增强预处理；设 False 可关闭对比效果 |
