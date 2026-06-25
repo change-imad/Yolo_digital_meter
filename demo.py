@@ -9,6 +9,21 @@ def main():
         digit_weights="runs/digit/train_3/weights/best.pt",
     )
 
+    pipeline = DigitalMeterPipeline(
+    obb_weights="runs/obb/train_3/weights/best.pt",             # OBB 模型权重
+    digit_weights="runs/digit/train_3/weights/best.pt",         # 单字检测权重
+    blur_threshold=20.0,        # 拉普拉斯模糊阈值
+    obb_conf=0.5,               # OBB 置信度阈值
+    digit_conf=0.3,             # 单字检测置信度阈值
+    obb_imgsz=640,              # OBB 输入尺寸
+    digit_imgsz=416,            # 单字检测输入尺寸
+    voting_window=8,           # 时序投票窗口
+    stability_threshold=4,      # 稳定性判定帧数
+    enhance_enabled=True,       # CLAHE 裁剪图增强预处理（默认开启）
+    output_dir=None,            # None=不保存文件, "results"=写JSON/CSV
+    device="0",                 # 推理设备
+    )
+
     #调用本地摄像头
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():

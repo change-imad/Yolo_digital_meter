@@ -64,7 +64,8 @@ pip install onnx==1.12.0
 
 # 安装 Ultralytics
 pip install onnxsim
-cd ultralytics && pip install -e . && cd ..
+pip install Ultralytics
+
 
 #其他常规依赖
 pip install tqdm pyyaml opencv-python
