@@ -44,27 +44,41 @@ Yolo_digital_meter/
 conda create -n d2l python=3.9 -y
 conda activate d2l
 
-# 安装 PyTorch，根据显卡配置
-# Jetson平台需下载whl文件进行编译
+#深度学习环境根据显卡配置
+
+# ------- 一般平台  X86_64 架构 ------------
+# 安装 PyTorch
 pip install torch==1.13
+pip install torchvision==0.14.1
+#安装 TensorRT 及其必备依赖     可选，用于边缘设备推理加速
+pip install tensorrt==8.2.5.1  
+#-----------------------------------------
 
-pip install ultralytics
-
-
-#tochvision需要下载源码，手动编译
+#--------- Jetson 平台 边缘设备  ------------
+# torch 使用whl文件
+wget [https://developer.download.nvidia.com/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl](https://developer.download.nvidia.com/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl)
+pip install torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl
+# tochvision需要下载源码，手动编译
 git clone http://github.com/pytorch/vision.git
 git checkout v0.14.1
 cd vision
 #脚本编译
 python setup.py install
 
-#安装 TensorRT 及其必备依赖     可选，用于边缘设备推理加速
-pip install tensorrt==8.2.5.1  
-pip install onnx==1.12.0       
+# 配置 TensorRT (将系统底层预装的 TensorRT 软链接至 Conda 虚拟环境中) 
+#注意根据实际路径对应修改
+ln -s /usr/lib/python3.8/dist-packages/tensorrt* ~/miniconda3/envs/d2l/lib/python3.8/site-packages/
+ln -s /usr/lib/python3.8/dist-packages/uff* ~/miniconda3/envs/d2l/lib/python3.8/site-packages/
+ln -s /usr/lib/python3.8/dist-packages/graphsurgeon* ~/miniconda3/envs/d2l/lib/python3.8/site-packages/
+#-------------------------------------------
+ 
 
 # 安装 Ultralytics
-pip install onnxsim
 pip install Ultralytics
+
+#ONNX依赖
+pip install onnx==1.12.0  
+pip install onnxsim
 
 
 #其他常规依赖
