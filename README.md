@@ -5,7 +5,7 @@
 
 ## 系统架构
 ```
-视频流->前端过滤->阶段一OBB定位->裁剪仪表区域->CLAHE增强->阶段二单字识别->时序投票筛选->输出
+视频流->前端过滤->阶段一OBB定位->OBB横向拓展->裁剪仪表区域->CLAHE增强->阶段二单字识别->时序投票筛选->输出
 ```
 ---
 
@@ -169,9 +169,9 @@ pipeline = DigitalMeterPipeline(
     enhance_enabled=True,   # CLAHE 增强预处理（默认开启，可设 False 对比）
 )
 
-# 处理单帧，返回读数字符串
-reading = pipeline.process_frame(frame)
-print(reading)  # 例如 "33442"
+# 处理单帧，返回读数字符串与 OBB 中心像素坐标
+reading, obb_center = pipeline.process_frame(frame)
+print(reading, obb_center)  # 例如 "33442" (120, 88)
 
 # 可选：开启文件记录
 pipeline_with_log = DigitalMeterPipeline(
@@ -229,12 +229,15 @@ pipeline = DigitalMeterPipeline(
     quorum_ratio=0.5,           # 单位投票最少支持帧比例，低于则该位判为不可靠
     min_consistency=0.6,        # 窗口内位数一致比例下限，低于则整体判为不可靠
     enhance_enabled=True,       # CLAHE 裁剪图增强预处理（默认开启）
+    obb_expand_ratio=0.4,       # OBB 框横向拓展比例（默认 0.4，左右各 20%）
     output_dir=None,            # None=不保存文件, "results"=写 JSON/CSV
     device="0",                 # 推理设备
 )
 
-reading = pipeline.process_frame(frame, uav_lat=0, uav_lon=0, uav_alt=0)
-# 返回: 读数字符串 或 None
+reading, obb_center = pipeline.process_frame(frame, uav_lat=0, uav_lon=0, uav_alt=0)
+# 返回: (reading, obb_center)
+#   reading: 读数字符串 或 None
+#   obb_center: OBB 中心像素坐标 (cx, cy) 或 None
 ```
 
 ### `enhance_crop`
@@ -323,6 +326,7 @@ reading, avg_conf, digit_count = detector.detect(crop_image)
 | `obb_imgsz` | 640 | obb模型输入图像尺寸 |
 | `digit_imgsz` | 416 | 单字识别输入尺寸 |
 | `enhance_enabled` | True | CLAHE 裁剪图增强预处理；设 False 可关闭对比效果 |
+| `obb_expand_ratio` | 0.4 | OBB 框横向拓展比例（每侧 20%，整体宽度 +40%），避免裁掉边缘数字 |
 
 ### 增强预处理说明
 

@@ -105,18 +105,23 @@ class ScreenDetector:
     """阶段一：YOLO-OBB 检测数显大框。"""
 
     def __init__(self, weights: str, device: str = "0",
-                 imgsz: int = 640, conf: float = 0.5):
+                 imgsz: int = 640, conf: float = 0.5,
+                 expand_ratio: float = 0.0):
         from ultralytics import YOLO
         log.info(f"加载屏幕定位模型: {weights}")
         self.model = YOLO(weights, task="obb")
         self.imgsz = imgsz
         self.conf = conf
         self.device = device
+        # OBB 宽度方向（数字排列方向）横向拓展比例。
+        # expand_ratio=0.4 表示左右各拓展 20%，整体宽度 +40%。
+        # 检测器层级默认 0.0（不拓展），由 Pipeline 层注入具体值。
+        self.expand_ratio = expand_ratio
 
     def detect(self, frame: np.ndarray):
         """
         返回 (corners, crop_img) 或 (None, None)。
-        corners: (4,2) 归一化角点
+        corners: (4,2) 归一化角点（已应用横向拓展）
         crop_img: 透视变换校正后的数显区域像素图
         """
         # torch.no_grad() 避免隐式梯度记录占用显存
@@ -128,7 +133,14 @@ class ScreenDetector:
 
         obb = results[0].obb
         best_idx = obb.conf.argmax().item()
-        box = obb.xywhr[best_idx].cpu().numpy()
+        # .copy() 避免回写到底层 tensor
+        box = obb.xywhr[best_idx].cpu().numpy().copy()
+
+        # 横向拓展：仅放大宽度（box[2] 为 w），中心保持不变，
+        # 避免裁掉数显左右边缘的数字，提升单字检测召回。
+        if self.expand_ratio > 0:
+            box[2] *= (1.0 + 2.0 * self.expand_ratio)
+
         corners = self._xywhr_to_corners(box, frame.shape[:2])
 
         # 透视变换校正（自适应输出尺寸）
@@ -338,7 +350,7 @@ class DigitalMeterPipeline:
 
     Usage:
         pipeline = DigitalMeterPipeline(obb_weights="...", digit_weights="...")
-        reading = pipeline.process_frame(frame)  # -> "33442" 或 None
+        reading, obb_center = pipeline.process_frame(frame)  # -> ("33442", (x,y)) 或 (None, None)
 
         # 可选开启文件记录:
         pipeline = DigitalMeterPipeline(..., output_dir="results")
@@ -357,6 +369,7 @@ class DigitalMeterPipeline:
                  quorum_ratio: float = 0.5,
                  min_consistency: float = 0.6,
                  enhance_enabled: bool = True,
+                 obb_expand_ratio: float = 0.4,
                  output_dir: Optional[str] = None,
                  device: str = "0"):
         """
@@ -371,6 +384,8 @@ class DigitalMeterPipeline:
             quorum_ratio: 单位投票最少支持帧比例（0-1），低于则该位判为不可靠
             min_consistency: 窗口内位数一致的帧比例下限（0-1），低于则整体判为不可靠
             enhance_enabled: 是否启用裁剪图 CLAHE 增强预处理（默认 True）
+            obb_expand_ratio: OBB 框横向拓展比例（默认 0.4，左右各 20%，整体宽度 +40%），
+                              用于避免裁掉数显左右边缘数字
             output_dir: 结果保存目录，None 则不保存文件（默认）
             device: 推理设备 ("0", "cpu")
         """
@@ -378,7 +393,8 @@ class DigitalMeterPipeline:
         self.enhance_enabled = enhance_enabled
 
         self.screen_detector = ScreenDetector(
-            weights=obb_weights, device=device, imgsz=obb_imgsz, conf=obb_conf)
+            weights=obb_weights, device=device, imgsz=obb_imgsz, conf=obb_conf,
+            expand_ratio=obb_expand_ratio)
         self.digit_detector = DigitDetector(
             weights=digit_weights, device=device, imgsz=digit_imgsz, conf=digit_conf)
         self.voter = TemporalVoter(
@@ -393,12 +409,15 @@ class DigitalMeterPipeline:
     def process_frame(self, frame: np.ndarray,
                       uav_lat: float = 0.0,
                       uav_lon: float = 0.0,
-                      uav_alt: float = 0.0) -> Optional[str]:
+                      uav_alt: float = 0.0
+                      ) -> Tuple[Optional[str], Optional[Tuple[int, int]]]:
         """
-        处理单帧图像，返回识别到的读数字符串。
+        处理单帧图像，返回识别到的读数字符串及 OBB 中心像素坐标。
 
         Returns:
-            读数字符串 (如 "33442")，识别失败返回 None。
+            (reading, obb_center)
+            reading: 读数字符串 (如 "33442")，未识别到返回 None。
+            obb_center: OBB 中心像素坐标 (cx, cy)；未检测到屏幕时返回 None。
             当 output_dir 已配置且读数稳定时，自动写入 JSON/CSV。
         """
         self.frame_count += 1
@@ -406,13 +425,19 @@ class DigitalMeterPipeline:
         # Step 1: 模糊过滤
         if is_frame_blurry(frame, self.blur_threshold):
             self.skip_blurry += 1
-            return None
+            return None, None
 
         # Step 2: OBB 屏幕定位 + 裁剪
         corners, crop = self.screen_detector.detect(frame)
         if corners is None or crop is None:
             self.skip_no_screen += 1
-            return None
+            return None, None
+
+        # 计算 OBB 中心像素坐标（由归一化角点均值反算）
+        H, W = frame.shape[:2]
+        cx_norm = float(np.mean(corners[:, 0]))
+        cy_norm = float(np.mean(corners[:, 1]))
+        obb_center = (int(round(cx_norm * W)), int(round(cy_norm * H)))
 
         # Step 2.5: 裁剪图增强预处理（CLAHE 提升文字对比度）
         if self.enhance_enabled:
@@ -421,9 +446,10 @@ class DigitalMeterPipeline:
         # Step 3: 单字检测 + 排序拼接
         reading, avg_conf, digit_count = self.digit_detector.detect(crop)
         if not reading:
-            return None
+            return None, obb_center
 
-        log.debug(f"帧 {self.frame_count}: {reading} ({digit_count}位, conf={avg_conf:.2f})")
+        log.debug(f"帧 {self.frame_count}: {reading} ({digit_count}位, "
+                  f"conf={avg_conf:.2f}, center={obb_center})")
 
         # Step 4: 时序投票
         self.voter.add(reading, avg_conf)
@@ -433,7 +459,7 @@ class DigitalMeterPipeline:
         if voted and '?' not in voted and self.voter.is_stable() and self.reporter:
             self.reporter.report(voted, avg_conf, uav_lat, uav_lon, uav_alt)
 
-        return voted
+        return voted, obb_center
 
 
 # ═══════════════════════════════════════════════════════

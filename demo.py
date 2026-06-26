@@ -34,13 +34,16 @@ def main():
         while True:
             ret,frame = cap.read()
 
-            # 处理单帧，返回读数字符串
-            reading = pipeline.process_frame(frame)
-            print(reading)  
+            # 处理单帧，返回读数字符串与 OBB 中心像素坐标
+            reading, obb_center = pipeline.process_frame(frame)
+            print(reading, obb_center)
 
             cv2.putText(frame, f"Reading: {reading}", (10, 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            
+            # 检测到屏幕时，在原图上标注 OBB 中心点（红色实心圆）
+            if obb_center is not None:
+                cv2.circle(frame, obb_center, 5, (0, 0, 255), -1)
+
             cv2.imshow('Digital Meter Detection', frame)
 
             #q键退出
