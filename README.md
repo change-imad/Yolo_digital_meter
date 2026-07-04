@@ -41,8 +41,11 @@ Yolo_digital_meter/
 ## 环境搭建
 
 ```bash
-conda create -n d2l python=3.9 -y
+conda create -n d2l python=3.8 -y
 conda activate d2l
+
+# 安装 Ultralytics
+pip install Ultralytics
 
 #深度学习环境根据显卡配置
 
@@ -73,8 +76,7 @@ ln -s /usr/lib/python3.8/dist-packages/graphsurgeon* ~/miniconda3/envs/d2l/lib/p
 #-------------------------------------------
  
 
-# 安装 Ultralytics
-pip install Ultralytics
+
 
 #ONNX依赖
 pip install onnx==1.12.0  
